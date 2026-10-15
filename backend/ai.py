@@ -109,16 +109,16 @@ def _call_key_llm(question: str, compact: dict, persona: str = "analyst", histor
         "Authorization": f"Bearer {POLLI_KEY}",
     }, method="POST")
     import time as _t
-    for _attempt in range(3):
+    for _attempt in range(4):
         try:
-            with urllib.request.urlopen(req, timeout=50) as resp:
+            with urllib.request.urlopen(req, timeout=25) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text = (data["choices"][0]["message"]["content"] or "").strip()
                 if text:
                     return text
         except Exception:
             pass
-        _t.sleep(1)
+        _t.sleep(1 + _attempt * 2)
     return None
 
 
@@ -229,6 +229,7 @@ def rule_based(question: str, snapshot: dict, facts: dict, scenario_diff: dict |
 
 def rule_based_stock_line(snapshot):
     return "; ".join(f"{s['sku']}: свободно {s['free']} из {s['on_hand']}" for s in snapshot.get("stock", [])) + "."
+
 
 
 def answer(question: str, snapshot: dict, scenario_diff: dict | None = None, all_shipments: list | None = None, persona: str = "analyst", history: list | None = None) -> tuple[str, dict, str]:
