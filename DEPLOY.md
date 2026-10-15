@@ -11,8 +11,8 @@
 ## Backend (Render) — НУЖЕН ОДИН РУЧНОЙ ШАГ
 1. Render → New → Blueprint → указать репозиторий (подхватит `render.yaml`,
    имя сервиса должно остаться `yablok-ia-backend` — тогда frontend подхватит его сам).
-2. В Environment добавить секреты: `DUNGEON_API_KEY` (купленный ключ), при желании
-   `AI_FUNPAY_KEY`, `POLLINATIONS_API_KEY`.
+2. В Environment добавить секрет: `POLLINATIONS_API_KEY` (купленный ключ), при желании
+   `AI_FUNPAY_KEY`.
 3. Render free засыпает: первый запрос после сна идёт до ~1 мин (таймаут ИИ-запросов 90 с),
    остальное в это время работает на демо-данных.
 
