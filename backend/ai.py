@@ -32,6 +32,13 @@ API_KEY = os.getenv("AI_FUNPAY_KEY", "")
 MODEL_MAIN = os.getenv("AI_MODEL", "gpt-6-astra")
 MODEL_FALLBACK = "deepseek-v4-pro"
 
+# Купленный ключ (DungeonAPI, OpenAI-compatible) — основной провайдер
+# для ИИ-аналитика и ИИ-консультанта. Ключ хранится в backend/.env
+# (не коммитится) и в переменных окружения на хостинге.
+DUNGEON_BASE_URL = os.getenv("DUNGEON_BASE_URL", "https://31-76-100-137.sslip.io/v1")
+DUNGEON_API_KEY = os.getenv("DUNGEON_API_KEY", "")
+DUNGEON_MODEL = os.getenv("DUNGEON_MODEL", "gpt-6-astra")
+
 
 def _human_sku(sku: str) -> str:
     return {"FG-AIR": "air", "FG-PLUS": "air plus"}.get(sku, sku)
@@ -112,6 +119,41 @@ def _call_key_llm(question: str, compact: dict, persona: str = "analyst", histor
     for _attempt in range(3):
         try:
             with urllib.request.urlopen(req, timeout=50) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = (data["choices"][0]["message"]["content"] or "").strip()
+                if text:
+                    return text
+        except Exception:
+            pass
+        _t.sleep(1)
+    return None
+
+
+def _call_dungeon_llm(question: str, compact: dict, persona: str = "analyst", history: list | None = None) -> str | None:
+    """Купленный ключ (DungeonAPI, OpenAI-compatible). Основной провайдер."""
+    if not DUNGEON_API_KEY:
+        return None
+    system = CONSULT_PROMPT if persona == "consultant" else SYSTEM_PROMPT
+    messages = [{"role": "system", "content": system}]
+    for h in (history or [])[-6:]:
+        if isinstance(h, dict) and h.get("role") in ("user", "assistant") and h.get("content"):
+            messages.append({"role": h["role"], "content": str(h["content"])[:300]})
+    messages.append({"role": "user", "content":
+        "Данные:\n" + json.dumps(compact, ensure_ascii=False) + f"\n\nВопрос: {question}"})
+    body = json.dumps({
+        "model": DUNGEON_MODEL,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": AI_MAX_TOKENS,
+    }).encode("utf-8")
+    req = urllib.request.Request(DUNGEON_BASE_URL.rstrip("/") + "/chat/completions", data=body, headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {DUNGEON_API_KEY}",
+    }, method="POST")
+    import time as _t
+    for _attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 text = (data["choices"][0]["message"]["content"] or "").strip()
                 if text:
@@ -246,6 +288,11 @@ def answer(question: str, snapshot: dict, scenario_diff: dict | None = None, all
     if persona not in ("analyst", "consultant"):
         persona = "analyst"
     cfx = compact_facts(snapshot, scenario_diff, ships)
+    llm = _call_dungeon_llm(question, cfx, persona, history)
+    if llm and len(llm) < 15:
+        llm = None  # слишком короткий ответ — пробуем дальше
+    if llm:
+        return llm, facts, "ai"
     llm = _call_key_llm(question, cfx, persona, history)
     if llm and len(llm) < 15:
         llm = None  # слишком короткий ответ — пробуем дальше

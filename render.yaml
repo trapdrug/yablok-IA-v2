@@ -16,6 +16,12 @@ services:
         value: gpt-6-astra
       - key: POLLINATIONS_API_KEY
         sync: false
+      - key: DUNGEON_BASE_URL
+        value: https://31-76-100-137.sslip.io/v1
+      - key: DUNGEON_API_KEY
+        sync: false
+      - key: DUNGEON_MODEL
+        value: gpt-6-astra
       - key: POLLI_MODEL
         value: openai
       - key: AI_MAX_TOKENS
