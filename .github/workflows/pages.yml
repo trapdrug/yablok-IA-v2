@@ -21,6 +21,12 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Адрес живого backend (Render). При совпадении имени сервиса с render.yaml
+      # это https://yablok-ia-backend.onrender.com. Можно переопределить без правки
+      # кода: Settings → Secrets and variables → Actions → Variables → VITE_API_URL.
+      # Пока backend недоступен — сайт сам переходит на демо-данные (mock-fallback).
+      VITE_API_URL: ${{ vars.VITE_API_URL != '' && vars.VITE_API_URL || 'https://yablok-ia-backend.onrender.com' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

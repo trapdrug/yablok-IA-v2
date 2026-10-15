@@ -1,5 +1,6 @@
 # Секреты и личные файлы — НЕ коммитить
 .env
+backend/.env
 *.env
 .env.*
 !.env.example
