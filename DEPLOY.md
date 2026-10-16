@@ -1,20 +1,53 @@
 # Деплой
 
+## Как ИИ работает «везде»
+- **Основной путь — прямо из браузера.** `frontend/src/llm.ts` вызывает провайдера
+  DungeonAPI (`https://31-76-100-137.sslip.io/v1`, модель `gpt-6-astra`) напрямую.
+  Это работает на статичном хостинге без сервера, поэтому ИИ отвечает реальной моделью
+  у любого посетителя (метка «● ответ нейросети»).
+- **Если backend поднят** (локально или на хостинге) — сайт сначала спрашивает его
+  (`/api/ai/ask`). Там же живёт второй путь: `backend/ai.py` использует тот же ключ
+  через переменную `DUNGEON_API_KEY`.
+- Если ни ключа, ни backend нет — включается офлайн-режим: точные ответы по правилам
+  (`via: 'rules'`) плюс плашка «демо».
+
+## ⚠️ Ключ в публичной сборке
+- Ключ вшит в `frontend/src/llm.ts` (константа `DEFAULT_KEY`) и потому **виден любому,
+  кто откроет исходники страницы**. Это осознанный выбор: так ИИ работает у всех
+  без своего сервера. Ключ стоит периодически менять у провайдера.
+- Чтобы убрать ключ из репозитория: добавьте секреты репозитория
+  (Settings → Secrets and variables → Actions → **Secrets**) `VITE_DUNGEON_KEY`,
+  `VITE_DUNGEON_BASE_URL`, `VITE_DUNGEON_MODEL` и удалите значение из `llm.ts`.
+  При сборке подставится секрет.
+- Frontend можно переопределить и через `frontend/.env` (см. `.env.example`),
+  но всё, что попадёт в сборку, считается публичным.
+
 ## Frontend (GitHub Pages) — ЗАПУЩЕН
 - Адрес: https://trapdrug.github.io/yablok-IA-v2/
 - `.github/workflows/pages.yml` — сборка и деплой при push в `main`.
 - В сборку зашит `VITE_API_URL` (по умолчанию `https://yablok-ia-backend.onrender.com`,
   переопределяется через Settings → Secrets and variables → Actions → Variables → `VITE_API_URL`).
-- Пока backend недоступен — сайт сам показывает демо-данные (mock-fallback с плашкой «демо»).
+- Пока backend недоступен — сайт показывает демо-данные (плашка «демо»), но ИИ всё равно
+  отвечает нейросетью напрямую из браузера.
 - Jekyll отключён (`.nojekyll` в артефакте), для прямых ссылок есть `404.html`.
 
-## Backend (Render) — НУЖЕН ОДИН РУЧНОЙ ШАГ
+## Backend (опционально: Render / свой сервер)
 1. Render → New → Blueprint → указать репозиторий (подхватит `render.yaml`,
    имя сервиса должно остаться `yablok-ia-backend` — тогда frontend подхватит его сам).
-2. В Environment добавить секрет: `POLLINATIONS_API_KEY` (купленный ключ), при желании
-   `AI_FUNPAY_KEY`.
-3. Render free засыпает: первый запрос после сна идёт до ~1 мин (таймаут ИИ-запросов 90 с),
-   остальное в это время работает на демо-данных.
+2. В Environment добавить секрет: `DUNGEON_API_KEY` (купленный ключ). При желании —
+   `POLLINATIONS_API_KEY`, `AI_FUNPAY_KEY`.
+3. Render free засыпает: первый запрос после сна идёт до ~1 мин.
+
+## Локальный запуск
+```
+cd backend
+python -m uvicorn backend.app:app --port 8000 --host 0.0.0.0    # из корня репо
+cd frontend
+npm install && npm run dev                                       # http://localhost:5173
+```
+- `backend/.env` — локальные секреты (в `.gitignore`), образец: `backend/.env.example`.
 
 ## Секреты
-- Секреты НЕ в гите: `backend/.env` в `.gitignore`, в репо только `*.env.example`.
+- `backend/.env` и `frontend/.env` в `.gitignore`; в репозитории только `*.env.example`.
+- НЕ коммитьте серверные ключи, которые должны остаться тайной. Ключ в
+  `frontend/src/llm.ts` — публичный по определению (см. предупреждение выше).
